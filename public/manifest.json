@@ -1,0 +1,32 @@
+
+{
+  "name": "힐링 모먼트 (Healing Moments)",
+  "short_name": "힐링모먼트",
+  "description": "매일 정해진 시간에 따뜻한 위로를 전합니다.",
+  "start_url": "/",
+  "display": "standalone",
+  "display_override": ["window-controls-overlay", "minimal-ui"],
+  "background_color": "#0a0502",
+  "theme_color": "#fce7f3",
+  "orientation": "portrait",
+  "categories": ["lifestyle", "health"],
+  "icons": [
+    {
+      "src": "https://cdn-icons-png.flaticon.com/512/3209/3209931.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "https://cdn-icons-png.flaticon.com/512/3209/3209931.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "https://cdn-icons-png.flaticon.com/512/3209/3209931.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}

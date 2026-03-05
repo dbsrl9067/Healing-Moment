@@ -1,0 +1,43 @@
+# Flutter-specific
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.pub-cache/
+.pub/
+/build/
+
+# Android-specific
+.gradle/
+local.properties
+*.aar
+*.apk
+*.ap_
+*.dex
+*.class
+/android/app/debug/
+/android/app/profile/
+/android/app/release/
+
+# Web-specific
+node_modules/
+dist/
+dist-ssr/
+*.local
+
+# IDE-specific
+.idea/
+.vscode/
+*.iml
+*.ipr
+*.iws
+.project
+.settings/
+.classpath
+
+# OS-specific
+.DS_Store
+Thumbs.db
+
+# Environment variables
+.env
+.env.*
