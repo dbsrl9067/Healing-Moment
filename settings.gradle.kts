@@ -23,5 +23,7 @@ dependencyResolutionManagement {
 }
 
 rootProject.name = "Healing Monet"
-include(":app")
- 
+
+// Use a unique name for the native module to avoid collision with Flutter's :app module
+include(":native_app")
+project(":native_app").projectDir = file("app")

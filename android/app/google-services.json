@@ -7,9 +7,9 @@
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:762860087826:android:3c63861ca5296860ac86cb",
+        "mobilesdk_app_id": "1:762860087826:android:667c15fdd1151df9ac86cb",
         "android_client_info": {
-          "package_name": "com.example.healingmonet"
+          "package_name": "com.example.healing_moments"
         }
       },
       "oauth_client": [

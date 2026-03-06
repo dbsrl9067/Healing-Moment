@@ -6,6 +6,7 @@ import 'package:just_audio/just_audio.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:intl/intl.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -216,6 +217,8 @@ class _BreathingScreenState extends State<BreathingScreen> with SingleTickerProv
   Timer? _timer;
   late AnimationController _controller;
   late Animation<double> _animation;
+  final AudioPlayer _breathingAudioPlayer = AudioPlayer();
+  String _audioUrl = 'https://cdn.pixabay.com/audio/2022/05/27/audio_1808fbf07a.mp3';
 
   @override
   void initState() {
@@ -227,19 +230,45 @@ class _BreathingScreenState extends State<BreathingScreen> with SingleTickerProv
     _animation = Tween<double>(begin: 1.0, end: 1.2).animate(
       CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
     );
+    _loadBreathingAudio();
   }
 
-  void _toggleBreathing() {
+  Future<void> _loadBreathingAudio() async {
+    try {
+      final doc = await FirebaseFirestore.instance.collection('settings').doc('breathing_audio').get();
+      if (doc.exists && doc.data() != null && doc.data()!['url'] != null) {
+        setState(() {
+          _audioUrl = doc.data()!['url'];
+        });
+      }
+    } catch (e) {
+      debugPrint("호흡 음원 로드 실패: $e");
+    }
+  }
+
+  void _toggleBreathing() async {
     setState(() {
       _isActive = !_isActive;
       if (_isActive) {
         _seconds = 0;
         _startTimer();
+        _playAudio();
       } else {
         _timer?.cancel();
         _controller.stop();
+        _breathingAudioPlayer.stop();
       }
     });
+  }
+
+  void _playAudio() async {
+    try {
+      await _breathingAudioPlayer.setUrl(_audioUrl);
+      await _breathingAudioPlayer.setLoopMode(LoopMode.one);
+      _breathingAudioPlayer.play();
+    } catch (e) {
+      debugPrint("호흡 음원 재생 실패: $e");
+    }
   }
 
   void _startTimer() {
@@ -266,6 +295,7 @@ class _BreathingScreenState extends State<BreathingScreen> with SingleTickerProv
   void dispose() {
     _timer?.cancel();
     _controller.dispose();
+    _breathingAudioPlayer.dispose();
     super.dispose();
   }
 
@@ -328,6 +358,7 @@ class _BreathingScreenState extends State<BreathingScreen> with SingleTickerProv
                 onTap: () {
                   _timer?.cancel();
                   _controller.reset();
+                  _breathingAudioPlayer.stop();
                   setState(() { _isActive = false; _seconds = 0; });
                 },
                 child: Container(
@@ -353,6 +384,40 @@ class Soundscape {
   final Color color;
 
   Soundscape({required this.id, required this.name, required this.icon, required this.url, required this.color});
+
+  factory Soundscape.fromFirestore(DocumentSnapshot doc) {
+    Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
+    return Soundscape(
+      id: doc.id,
+      name: data['name'] ?? '알 수 없는 사운드',
+      icon: _getIconData(data['iconName']),
+      url: data['url'] ?? '',
+      color: _getColor(data['color']),
+    );
+  }
+
+  static IconData _getIconData(String? name) {
+    switch (name) {
+      case 'umbrella': return Icons.umbrella;
+      case 'library': return Icons.library_books;
+      case 'flame': return Icons.local_fire_department;
+      case 'waves': return Icons.waves;
+      case 'coffee': return Icons.coffee;
+      case 'forest': return Icons.forest;
+      default: return Icons.music_note;
+    }
+  }
+
+  static Color _getColor(String? colorStr) {
+    switch (colorStr) {
+      case 'pink': return Colors.pinkAccent;
+      case 'purple': return Colors.purpleAccent;
+      case 'indigo': return Colors.indigoAccent;
+      case 'teal': return Colors.tealAccent;
+      case 'mint': return Colors.lightGreenAccent;
+      default: return Colors.pinkAccent;
+    }
+  }
 }
 
 class SoundScreen extends StatefulWidget {
@@ -365,14 +430,6 @@ class SoundScreen extends StatefulWidget {
 class _SoundScreenState extends State<SoundScreen> {
   final AudioPlayer _audioPlayer = AudioPlayer();
   String? _playingId;
-
-  final List<Soundscape> _sounds = [
-    Soundscape(id: 'rain', name: '비 오는 날의 도서관', icon: Icons.umbrella, url: 'https://cdn.pixabay.com/audio/2022/07/04/audio_2463276710.mp3', color: Colors.blue),
-    Soundscape(id: 'fire', name: '모닥불 타오르는 밤', icon: Icons.local_fire_department, url: 'https://cdn.pixabay.com/audio/2021/09/06/audio_173872019b.mp3', color: Colors.orange),
-    Soundscape(id: 'waves', name: '제주도 바다 파도', icon: Icons.waves, url: 'https://cdn.pixabay.com/audio/2022/02/07/audio_6e53745425.mp3', color: Colors.cyan),
-    Soundscape(id: 'cafe', name: '조용한 오후의 카페', icon: Icons.coffee, url: 'https://cdn.pixabay.com/audio/2022/03/23/audio_07b2a04be3.mp3', color: Colors.brown),
-    Soundscape(id: 'forest', name: '바람 부는 숲 속', icon: Icons.forest, url: 'https://cdn.pixabay.com/audio/2021/09/06/audio_9c05c0a27d.mp3', color: Colors.green),
-  ];
 
   Future<void> _toggleSound(Soundscape sound) async {
     if (_playingId == sound.id) {
@@ -409,38 +466,53 @@ class _SoundScreenState extends State<SoundScreen> {
             const Text('마음을 편안하게 해주는 소리를 골라보세요.', style: TextStyle(color: Colors.grey)),
             const SizedBox(height: 32),
             Expanded(
-              child: ListView.builder(
-                itemCount: _sounds.length,
-                itemBuilder: (context, index) {
-                  final sound = _sounds[index];
-                  final isPlaying = _playingId == sound.id;
-                  return Padding(
-                    padding: const EdgeInsets.only(bottom: 16.0),
-                    child: GestureDetector(
-                      onTap: () => _toggleSound(sound),
-                      child: Container(
-                        padding: const EdgeInsets.all(20),
-                        decoration: BoxDecoration(
-                          color: isPlaying ? sound.color.withOpacity(0.2) : Colors.white.withOpacity(0.05),
-                          borderRadius: BorderRadius.circular(24),
-                          border: Border.all(color: isPlaying ? sound.color.withOpacity(0.5) : Colors.white.withOpacity(0.1)),
-                        ),
-                        child: Row(
-                          children: [
-                            Container(
-                              padding: const EdgeInsets.all(12),
-                              decoration: BoxDecoration(color: sound.color.withOpacity(0.1), borderRadius: BorderRadius.circular(16)),
-                              child: Icon(sound.icon, color: sound.color),
+              child: StreamBuilder<QuerySnapshot>(
+                stream: FirebaseFirestore.instance.collection('soundscapes').snapshots(),
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return const Center(child: CircularProgressIndicator());
+                  }
+                  
+                  if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+                    return const Center(child: Text('등록된 사운드가 없습니다.', style: TextStyle(color: Colors.white24)));
+                  }
+
+                  final sounds = snapshot.data!.docs.map((doc) => Soundscape.fromFirestore(doc)).toList();
+
+                  return ListView.builder(
+                    itemCount: sounds.length,
+                    itemBuilder: (context, index) {
+                      final sound = sounds[index];
+                      final isPlaying = _playingId == sound.id;
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: 16.0),
+                        child: GestureDetector(
+                          onTap: () => _toggleSound(sound),
+                          child: Container(
+                            padding: const EdgeInsets.all(20),
+                            decoration: BoxDecoration(
+                              color: isPlaying ? sound.color.withOpacity(0.2) : Colors.white.withOpacity(0.05),
+                              borderRadius: BorderRadius.circular(24),
+                              border: Border.all(color: isPlaying ? sound.color.withOpacity(0.5) : Colors.white.withOpacity(0.1)),
                             ),
-                            const SizedBox(width: 16),
-                            Expanded(child: Text(sound.name, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w500))),
-                            Icon(isPlaying ? Icons.pause_circle_filled : Icons.play_circle_filled, color: isPlaying ? sound.color : Colors.grey, size: 32),
-                          ],
+                            child: Row(
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.all(12),
+                                  decoration: BoxDecoration(color: sound.color.withOpacity(0.1), borderRadius: BorderRadius.circular(16)),
+                                  child: Icon(sound.icon, color: sound.color),
+                                ),
+                                const SizedBox(width: 16),
+                                Expanded(child: Text(sound.name, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w500))),
+                                Icon(isPlaying ? Icons.pause_circle_filled : Icons.play_circle_filled, color: isPlaying ? sound.color : Colors.grey, size: 32),
+                              ],
+                            ),
+                          ),
                         ),
-                      ),
-                    ),
+                      );
+                    },
                   );
-                },
+                }
               ),
             ),
           ],

@@ -6,7 +6,7 @@ plugins {
 }
 
 android {
-    namespace = "com.example.healingmonet"
+    namespace = "com.example.healing_moments"
     compileSdk = flutter.compileSdkVersion
     ndkVersion = flutter.ndkVersion
 
@@ -21,7 +21,7 @@ android {
     }
 
     defaultConfig {
-        applicationId = "com.example.healingmonet"
+        applicationId = "com.example.healing_moments"
         minSdk = flutter.minSdkVersion
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
