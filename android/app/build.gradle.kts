@@ -6,7 +6,6 @@ plugins {
 }
 
 android {
-    // Firebase에 등록된 com.example.healing_moments와 일치시켜야 합니다.
     namespace = "com.example.healing_moments"
     compileSdk = flutter.compileSdkVersion
     ndkVersion = flutter.ndkVersion
@@ -22,7 +21,6 @@ android {
     }
 
     defaultConfig {
-        // Firebase google-services.json의 package_name과 일치해야 합니다.
         applicationId = "com.example.healing_moments"
         minSdk = flutter.minSdkVersion
         targetSdk = flutter.targetSdkVersion
@@ -33,6 +31,7 @@ android {
     buildTypes {
         release {
             signingConfig = signingConfigs.getByName("debug")
+            // 플러터 빌드 시스템에 맞게 최적화 설정을 제거하거나 기본값 사용
         }
     }
 }
@@ -45,4 +44,5 @@ dependencies {
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.0.3")
     implementation(platform("com.google.firebase:firebase-bom:33.1.0"))
     implementation("com.google.firebase:firebase-analytics")
+    implementation("com.google.firebase:firebase-firestore")
 }

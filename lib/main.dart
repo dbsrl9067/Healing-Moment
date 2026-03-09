@@ -1,12 +1,12 @@
 import 'dart:async';
-import 'dart:convert';
 import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:just_audio/just_audio.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:intl/intl.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_storage/firebase_storage.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -31,53 +31,99 @@ class HealingMomentsApp extends StatelessWidget {
         brightness: Brightness.dark,
         scaffoldBackgroundColor: const Color(0xFF0A0502),
         colorScheme: ColorScheme.fromSeed(
-          seedColor: Colors.pink,
+          seedColor: const Color(0xFFF472B6),
           brightness: Brightness.dark,
           surface: const Color(0xFF1A1512),
         ),
       ),
-      home: const MainNavigationScreen(),
+      home: const AuthWrapper(),
     );
   }
 }
 
-class MainNavigationScreen extends StatefulWidget {
-  const MainNavigationScreen({super.key});
+class AuthWrapper extends StatelessWidget {
+  const AuthWrapper({super.key});
 
   @override
-  State<MainNavigationScreen> createState() => _MainNavigationScreenState();
+  Widget build(BuildContext context) {
+    return StreamBuilder<User?>(
+      stream: FirebaseAuth.instance.authStateChanges(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Scaffold(body: Center(child: CircularProgressIndicator()));
+        }
+        if (snapshot.hasData) {
+          return const MainNavigationScreen();
+        }
+        return const LoginScreen();
+      },
+    );
+  }
 }
 
-class _MainNavigationScreenState extends State<MainNavigationScreen> {
-  int _selectedIndex = 0;
+class LoginScreen extends StatefulWidget {
+  const LoginScreen({super.key});
 
-  final List<Widget> _pages = [
-    const HomeScreen(),
-    const BreathingScreen(),
-    const SoundScreen(),
-    const JournalScreen(),
-  ];
+  @override
+  State<LoginScreen> createState() => _LoginScreenState();
+}
+
+class _LoginScreenState extends State<LoginScreen> {
+  final _emailController = TextEditingController();
+  final _passwordController = TextEditingController();
+  bool _isLogin = true;
+
+  Future<void> _submit() async {
+    try {
+      if (_isLogin) {
+        await FirebaseAuth.instance.signInWithEmailAndPassword(
+          email: _emailController.text.trim(),
+          password: _passwordController.text.trim(),
+        );
+      } else {
+        await FirebaseAuth.instance.createUserWithEmailAndPassword(
+          email: _emailController.text.trim(),
+          password: _passwordController.text.trim(),
+        );
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('인증 실패: $e')));
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: _pages[_selectedIndex],
-      bottomNavigationBar: Container(
-        decoration: BoxDecoration(
-          border: Border(top: BorderSide(color: Colors.white.withOpacity(0.1), width: 0.5)),
-        ),
-        child: BottomNavigationBar(
-          currentIndex: _selectedIndex,
-          onTap: (index) => setState(() => _selectedIndex = index),
-          type: BottomNavigationBarType.fixed,
-          backgroundColor: const Color(0xFF0A0502),
-          selectedItemColor: Colors.pinkAccent,
-          unselectedItemColor: Colors.grey,
-          items: const [
-            BottomNavigationBarItem(icon: Icon(Icons.home_outlined), activeIcon: Icon(Icons.home), label: '홈'),
-            BottomNavigationBarItem(icon: Icon(Icons.air), label: '호흡'),
-            BottomNavigationBarItem(icon: Icon(Icons.music_note_outlined), activeIcon: Icon(Icons.music_note), label: '사운드'),
-            BottomNavigationBarItem(icon: Icon(Icons.favorite_border), activeIcon: Icon(Icons.favorite), label: '기록'),
+      body: Padding(
+        padding: const EdgeInsets.all(24.0),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            const Icon(Icons.favorite, color: Color(0xFFF472B6), size: 64),
+            const SizedBox(height: 24),
+            Text(_isLogin ? '반가워요!' : '환영합니다!', textAlign: TextAlign.center, style: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 32),
+            TextField(controller: _emailController, decoration: const InputDecoration(labelText: '이메일')),
+            const SizedBox(height: 16),
+            TextField(controller: _passwordController, decoration: const InputDecoration(labelText: '비밀번호'), obscureText: true),
+            const SizedBox(height: 32),
+            ElevatedButton(
+              onPressed: _submit,
+              style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFF472B6), foregroundColor: Colors.white, padding: const EdgeInsets.symmetric(vertical: 16)),
+              child: Text(_isLogin ? '로그인' : '회원가입'),
+            ),
+            TextButton(onPressed: () => setState(() => _isLogin = !_isLogin), child: Text(_isLogin ? '계정이 없으신가요? 회원가입' : '이미 계정이 있으신가요? 로그인')),
+            TextButton(
+              onPressed: () async {
+                try {
+                  await FirebaseAuth.instance.signInAnonymously();
+                } catch (e) {
+                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('익명 로그인 실패: $e')));
+                }
+              },
+              child: const Text('익명으로 시작하기', style: TextStyle(color: Colors.grey)),
+            ),
           ],
         ),
       ),
@@ -85,117 +131,87 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
   }
 }
 
-class Quote {
-  final int id;
-  final String text;
-  Quote({required this.id, required this.text});
+class MainNavigationScreen extends StatefulWidget {
+  const MainNavigationScreen({super.key});
+  @override
+  State<MainNavigationScreen> createState() => _MainNavigationScreenState();
+}
+
+class _MainNavigationScreenState extends State<MainNavigationScreen> {
+  int _selectedIndex = 0;
+  final List<Widget> _pages = [const HomeScreen(), const BreathingScreen(), const SoundScreen(), const JournalScreen()];
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: _pages[_selectedIndex],
+      bottomNavigationBar: BottomNavigationBar(
+        currentIndex: _selectedIndex,
+        onTap: (index) => setState(() => _selectedIndex = index),
+        type: BottomNavigationBarType.fixed,
+        backgroundColor: const Color(0xFF0A0502),
+        selectedItemColor: const Color(0xFFF472B6),
+        unselectedItemColor: Colors.grey,
+        items: const [
+          BottomNavigationBarItem(icon: Icon(Icons.home_outlined), label: '홈'),
+          BottomNavigationBarItem(icon: Icon(Icons.air), label: '호흡'),
+          BottomNavigationBarItem(icon: Icon(Icons.music_note), label: '사운드'),
+          BottomNavigationBarItem(icon: Icon(Icons.favorite), label: '기록'),
+        ],
+      ),
+    );
+  }
+}
+
+class SettingsScreen extends StatelessWidget {
+  const SettingsScreen({super.key});
+  @override
+  Widget build(BuildContext context) {
+    final user = FirebaseAuth.instance.currentUser;
+    return Scaffold(
+      appBar: AppBar(title: const Text('설정')),
+      body: ListView(
+        children: [
+          ListTile(leading: const Icon(Icons.person_outline), title: Text(user?.isAnonymous ?? true ? '익명 사용자' : user?.email ?? '이메일 없음'), subtitle: const Text('현재 로그인 계정')),
+          const Divider(),
+          ListTile(
+            leading: const Icon(Icons.logout, color: Colors.redAccent),
+            title: const Text('로그아웃', style: TextStyle(color: Colors.redAccent)),
+            onTap: () { FirebaseAuth.instance.signOut(); Navigator.pop(context); },
+          ),
+        ],
+      ),
+    );
+  }
 }
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
-
   @override
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  final List<Quote> _quotes = [
-    Quote(id: 1, text: "오늘 하루도 정말 고생 많았어요. 당신은 충분히 잘하고 있습니다."),
-    Quote(id: 2, text: "잠시 숨을 크게 들이마셔 보세요. 평온함이 당신과 함께할 거예요."),
-    Quote(id: 3, text: "당신은 생각보다 훨씬 더 강하고 아름다운 사람입니다."),
-    Quote(id: 4, text: "작은 발걸음들이 모여 커다란 변화를 만들어낼 거예요. 조급해하지 마세요."),
-    Quote(id: 5, text: "어제의 실수보다는 오늘의 가능성에 집중해보는 건 어떨까요?"),
-    Quote(id: 6, text: "당신은 존재 자체만으로도 소중하고 가치 있는 사람입니다."),
-    Quote(id: 7, text: "지치고 힘들 때는 잠시 쉬어가도 괜찮아요. 그것도 용기입니다."),
-    Quote(id: 8, text: "당신의 노력은 결코 헛되지 않아요. 언젠가 밝게 빛날 거예요."),
-    Quote(id: 9, text: "오늘 하루, 스스로에게 '고마워'라고 한마디 건네주세요."),
-    Quote(id: 10, text: "세상의 속도에 맞추려 애쓰지 마세요. 당신만의 속도가 가장 소중합니다."),
-  ];
-
-  late Quote _currentQuote;
-
+  final List<String> _quotes = ["오늘 하루도 정말 고생 많았어요.", "잠시 숨을 크게 들이마셔 보세요.", "당신은 생각보다 훨씬 더 강합니다.", "작은 발걸음이 큰 변화를 만듭니다.", "당신은 존재 자체로 소중합니다."];
+  late String _currentQuote;
   @override
-  void initState() {
-    super.initState();
-    _currentQuote = _quotes[Random().nextInt(_quotes.length)];
-  }
-
-  void _refreshQuote() {
-    setState(() {
-      _currentQuote = _quotes[Random().nextInt(_quotes.length)];
-    });
-  }
-
+  void initState() { super.initState(); _currentQuote = _quotes[Random().nextInt(_quotes.length)]; }
   @override
   Widget build(BuildContext context) {
     return SafeArea(
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 24.0),
+        padding: const EdgeInsets.all(24.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const SizedBox(height: 20),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: const Icon(Icons.favorite, color: Colors.pinkAccent, size: 24),
-                    ),
-                    const SizedBox(width: 12),
-                    const Text('힐링 모먼트', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-                  ],
-                ),
-                IconButton(onPressed: () {}, icon: const Icon(Icons.settings_outlined, color: Colors.grey)),
-              ],
-            ),
-            const SizedBox(height: 40),
-            const Text('Today\'s Reflection', style: TextStyle(color: Colors.pinkAccent, letterSpacing: 2, fontSize: 12, fontWeight: FontWeight.bold)),
-            const SizedBox(height: 8),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                const Text('오늘의 한 줄 위로', style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold)),
-                IconButton(
-                  onPressed: _refreshQuote,
-                  icon: const Icon(Icons.refresh, color: Colors.pinkAccent, size: 20),
-                ),
-              ],
-            ),
-            const SizedBox(height: 32),
+            Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+              const Text('힐링 모먼트', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+              IconButton(onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const SettingsScreen())), icon: const Icon(Icons.settings_outlined, color: Colors.grey)),
+            ]),
+            const SizedBox(height: 60),
             Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(32),
-              decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.05),
-                borderRadius: BorderRadius.circular(32),
-                border: Border.all(color: Colors.white.withOpacity(0.1)),
-              ),
-              child: Column(
-                children: [
-                  Opacity(
-                    opacity: 0.3,
-                    child: const Icon(Icons.format_quote, color: Colors.pinkAccent, size: 48),
-                  ),
-                  const SizedBox(height: 16),
-                  Text(
-                    _currentQuote.text,
-                    textAlign: TextAlign.center,
-                    style: const TextStyle(fontSize: 20, fontStyle: FontStyle.italic, height: 1.6),
-                  ),
-                  const SizedBox(height: 16),
-                  Opacity(
-                    opacity: 0.3,
-                    child: const Icon(Icons.format_quote, color: Colors.pinkAccent, size: 48),
-                  ),
-                ],
-              ),
+              width: double.infinity, padding: const EdgeInsets.all(32),
+              decoration: BoxDecoration(color: Colors.white.withOpacity(0.05), borderRadius: BorderRadius.circular(32)),
+              child: Text(_currentQuote, textAlign: TextAlign.center, style: const TextStyle(fontSize: 20, fontStyle: FontStyle.italic)),
             ),
           ],
         ),
@@ -206,7 +222,6 @@ class _HomeScreenState extends State<HomeScreen> {
 
 class BreathingScreen extends StatefulWidget {
   const BreathingScreen({super.key});
-
   @override
   State<BreathingScreen> createState() => _BreathingScreenState();
 }
@@ -217,306 +232,110 @@ class _BreathingScreenState extends State<BreathingScreen> with SingleTickerProv
   Timer? _timer;
   late AnimationController _controller;
   late Animation<double> _animation;
-  final AudioPlayer _breathingAudioPlayer = AudioPlayer();
+  final AudioPlayer _audioPlayer = AudioPlayer();
   String _audioUrl = 'https://cdn.pixabay.com/audio/2022/05/27/audio_1808fbf07a.mp3';
 
   @override
   void initState() {
     super.initState();
-    _controller = AnimationController(
-      vsync: this,
-      duration: const Duration(seconds: 4),
-    );
-    _animation = Tween<double>(begin: 1.0, end: 1.2).animate(
-      CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
-    );
-    _loadBreathingAudio();
+    _controller = AnimationController(vsync: this, duration: const Duration(seconds: 4));
+    _animation = Tween<double>(begin: 1.0, end: 1.2).animate(CurvedAnimation(parent: _controller, curve: Curves.easeInOut));
+    _loadSettings();
   }
 
-  Future<void> _loadBreathingAudio() async {
+  Future<void> _loadSettings() async {
     try {
       final doc = await FirebaseFirestore.instance.collection('settings').doc('breathing_audio').get();
-      if (doc.exists && doc.data() != null && doc.data()!['url'] != null) {
-        setState(() {
-          _audioUrl = doc.data()!['url'];
-        });
+      if (doc.exists) {
+        String url = doc.data()?['url'] ?? _audioUrl;
+        if (url.startsWith('gs://')) url = await FirebaseStorage.instance.refFromURL(url).getDownloadURL();
+        if (mounted) setState(() => _audioUrl = url);
       }
-    } catch (e) {
-      debugPrint("호흡 음원 로드 실패: $e");
-    }
+    } catch (e) { debugPrint("설정 로드 에러: $e"); }
   }
 
-  void _toggleBreathing() async {
+  void _toggle() async {
     setState(() {
       _isActive = !_isActive;
       if (_isActive) {
         _seconds = 0;
-        _startTimer();
-        _playAudio();
-      } else {
-        _timer?.cancel();
-        _controller.stop();
-        _breathingAudioPlayer.stop();
-      }
+        _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
+          setState(() { _seconds++; if (_seconds % 12 == 0) _controller.forward(); else if (_seconds % 12 == 8) _controller.reverse(); });
+        });
+        _audioPlayer.setUrl(_audioUrl).then((_) { _audioPlayer.setLoopMode(LoopMode.one); _audioPlayer.play(); });
+        _controller.forward();
+      } else { _timer?.cancel(); _controller.stop(); _audioPlayer.stop(); }
     });
-  }
-
-  void _playAudio() async {
-    try {
-      await _breathingAudioPlayer.setUrl(_audioUrl);
-      await _breathingAudioPlayer.setLoopMode(LoopMode.one);
-      _breathingAudioPlayer.play();
-    } catch (e) {
-      debugPrint("호흡 음원 재생 실패: $e");
-    }
-  }
-
-  void _startTimer() {
-    _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
-      setState(() {
-        _seconds++;
-        int cycle = _seconds % 12;
-        if (cycle == 0) { _controller.forward(); } 
-        else if (cycle == 8) { _controller.reverse(); }
-      });
-    });
-    _controller.forward();
-  }
-
-  String _getPhaseText() {
-    if (!_isActive) return '준비하기';
-    int cycle = _seconds % 12;
-    if (cycle < 4) return '숨 들이마시기';
-    if (cycle < 8) return '잠시 멈추기';
-    return '숨 내뱉기';
   }
 
   @override
-  void dispose() {
-    _timer?.cancel();
-    _controller.dispose();
-    _breathingAudioPlayer.dispose();
-    super.dispose();
-  }
+  void dispose() { _timer?.cancel(); _controller.dispose(); _audioPlayer.dispose(); super.dispose(); }
 
   @override
   Widget build(BuildContext context) {
     return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          const Text('마이 콰이어트 타임', style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
-          const SizedBox(height: 8),
-          const Text('단 1분이라도 온전히 나에게 집중해보세요.', style: TextStyle(color: Colors.grey)),
-          const SizedBox(height: 60),
-          ScaleTransition(
-            scale: _animation,
-            child: Container(
-              width: 240,
-              height: 240,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                border: Border.all(
-                  color: _isActive && (_seconds % 12 < 4) ? Colors.pinkAccent : Colors.pinkAccent.withOpacity(0.3),
-                  width: 4,
-                ),
-                color: Colors.white.withOpacity(0.05),
-              ),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Icon(Icons.air, size: 48, color: Colors.grey),
-                  const SizedBox(height: 16),
-                  Text(_getPhaseText(), style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w500)),
-                  if (_isActive)
-                    Padding(
-                      padding: const EdgeInsets.only(top: 8.0),
-                      child: Text(
-                        '${(_seconds ~/ 60).toString().padLeft(2, '0')}:${(_seconds % 60).toString().padLeft(2, '0')}',
-                        style: const TextStyle(color: Colors.grey),
-                      ),
-                    ),
-                ],
-              ),
-            ),
+      child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+        ScaleTransition(
+          scale: _animation,
+          child: Container(
+            width: 200, height: 200,
+            decoration: BoxDecoration(shape: BoxShape.circle, border: Border.all(color: const Color(0xFFF472B6), width: 4)),
+            child: Center(child: Text(_isActive ? (_seconds % 12 < 4 ? '흡' : _seconds % 12 < 8 ? '정' : '호') : '시작')),
           ),
-          const SizedBox(height: 60),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              GestureDetector(
-                onTap: _toggleBreathing,
-                child: Container(
-                  width: 64,
-                  height: 64,
-                  decoration: BoxDecoration(color: Colors.white.withOpacity(0.1), shape: BoxShape.circle),
-                  child: Icon(_isActive ? Icons.pause : Icons.play_arrow, size: 32),
-                ),
-              ),
-              const SizedBox(width: 20),
-              GestureDetector(
-                onTap: () {
-                  _timer?.cancel();
-                  _controller.reset();
-                  _breathingAudioPlayer.stop();
-                  setState(() { _isActive = false; _seconds = 0; });
-                },
-                child: Container(
-                  width: 64,
-                  height: 64,
-                  decoration: BoxDecoration(color: Colors.white.withOpacity(0.05), shape: BoxShape.circle),
-                  child: const Icon(Icons.refresh, size: 32),
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
+        ),
+        const SizedBox(height: 40),
+        IconButton(onPressed: _toggle, icon: Icon(_isActive ? Icons.pause : Icons.play_arrow, size: 48)),
+      ]),
     );
-  }
-}
-
-class Soundscape {
-  final String id;
-  final String name;
-  final IconData icon;
-  final String url;
-  final Color color;
-
-  Soundscape({required this.id, required this.name, required this.icon, required this.url, required this.color});
-
-  factory Soundscape.fromFirestore(DocumentSnapshot doc) {
-    Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
-    return Soundscape(
-      id: doc.id,
-      name: data['name'] ?? '알 수 없는 사운드',
-      icon: _getIconData(data['iconName']),
-      url: data['url'] ?? '',
-      color: _getColor(data['color']),
-    );
-  }
-
-  static IconData _getIconData(String? name) {
-    switch (name) {
-      case 'umbrella': return Icons.umbrella;
-      case 'library': return Icons.library_books;
-      case 'flame': return Icons.local_fire_department;
-      case 'waves': return Icons.waves;
-      case 'coffee': return Icons.coffee;
-      case 'forest': return Icons.forest;
-      default: return Icons.music_note;
-    }
-  }
-
-  static Color _getColor(String? colorStr) {
-    switch (colorStr) {
-      case 'pink': return Colors.pinkAccent;
-      case 'purple': return Colors.purpleAccent;
-      case 'indigo': return Colors.indigoAccent;
-      case 'teal': return Colors.tealAccent;
-      case 'mint': return Colors.lightGreenAccent;
-      default: return Colors.pinkAccent;
-    }
   }
 }
 
 class SoundScreen extends StatefulWidget {
   const SoundScreen({super.key});
-
   @override
   State<SoundScreen> createState() => _SoundScreenState();
 }
 
 class _SoundScreenState extends State<SoundScreen> {
-  final AudioPlayer _audioPlayer = AudioPlayer();
-  String? _playingId;
+  final AudioPlayer _player = AudioPlayer();
+  String? _playingUrl;
 
-  Future<void> _toggleSound(Soundscape sound) async {
-    if (_playingId == sound.id) {
-      await _audioPlayer.stop();
-      setState(() { _playingId = null; });
-    } else {
-      try {
-        await _audioPlayer.setUrl(sound.url);
-        await _audioPlayer.setLoopMode(LoopMode.one);
-        _audioPlayer.play();
-        setState(() { _playingId = sound.id; });
-      } catch (e) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('사운드를 불러올 수 없습니다.')));
-      }
-    }
+  Future<void> _play(String url) async {
+    try {
+      if (_playingUrl == url) { await _player.stop(); setState(() => _playingUrl = null); return; }
+      String playUrl = url;
+      if (url.startsWith('gs://')) playUrl = await FirebaseStorage.instance.refFromURL(url).getDownloadURL();
+      await _player.setUrl(playUrl); _player.play();
+      setState(() => _playingUrl = url);
+    } catch (e) { if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('재생 에러: $e'))); }
   }
 
   @override
-  void dispose() {
-    _audioPlayer.dispose();
-    super.dispose();
-  }
+  void dispose() { _player.dispose(); super.dispose(); }
 
   @override
   Widget build(BuildContext context) {
     return SafeArea(
-      child: Padding(
-        padding: const EdgeInsets.all(24.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text('힐링 사운드', style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold)),
-            const SizedBox(height: 8),
-            const Text('마음을 편안하게 해주는 소리를 골라보세요.', style: TextStyle(color: Colors.grey)),
-            const SizedBox(height: 32),
-            Expanded(
-              child: StreamBuilder<QuerySnapshot>(
-                stream: FirebaseFirestore.instance.collection('soundscapes').snapshots(),
-                builder: (context, snapshot) {
-                  if (snapshot.connectionState == ConnectionState.waiting) {
-                    return const Center(child: CircularProgressIndicator());
-                  }
-                  
-                  if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-                    return const Center(child: Text('등록된 사운드가 없습니다.', style: TextStyle(color: Colors.white24)));
-                  }
-
-                  final sounds = snapshot.data!.docs.map((doc) => Soundscape.fromFirestore(doc)).toList();
-
-                  return ListView.builder(
-                    itemCount: sounds.length,
-                    itemBuilder: (context, index) {
-                      final sound = sounds[index];
-                      final isPlaying = _playingId == sound.id;
-                      return Padding(
-                        padding: const EdgeInsets.only(bottom: 16.0),
-                        child: GestureDetector(
-                          onTap: () => _toggleSound(sound),
-                          child: Container(
-                            padding: const EdgeInsets.all(20),
-                            decoration: BoxDecoration(
-                              color: isPlaying ? sound.color.withOpacity(0.2) : Colors.white.withOpacity(0.05),
-                              borderRadius: BorderRadius.circular(24),
-                              border: Border.all(color: isPlaying ? sound.color.withOpacity(0.5) : Colors.white.withOpacity(0.1)),
-                            ),
-                            child: Row(
-                              children: [
-                                Container(
-                                  padding: const EdgeInsets.all(12),
-                                  decoration: BoxDecoration(color: sound.color.withOpacity(0.1), borderRadius: BorderRadius.circular(16)),
-                                  child: Icon(sound.icon, color: sound.color),
-                                ),
-                                const SizedBox(width: 16),
-                                Expanded(child: Text(sound.name, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w500))),
-                                Icon(isPlaying ? Icons.pause_circle_filled : Icons.play_circle_filled, color: isPlaying ? sound.color : Colors.grey, size: 32),
-                              ],
-                            ),
-                          ),
-                        ),
-                      );
-                    },
-                  );
-                }
-              ),
-            ),
-          ],
-        ),
+      child: StreamBuilder<QuerySnapshot>(
+        stream: FirebaseFirestore.instance.collection('soundscapes').snapshots(),
+        builder: (context, snapshot) {
+          if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
+          final docs = snapshot.data!.docs;
+          return ListView.builder(
+            itemCount: docs.length,
+            itemBuilder: (context, index) {
+              final data = docs[index].data() as Map<String, dynamic>;
+              final url = data['url'] ?? '';
+              final isPlaying = _playingUrl == url;
+              return ListTile(
+                leading: Icon(Icons.music_note, color: isPlaying ? Colors.white : const Color(0xFFF472B6)),
+                title: Text(data['name'] ?? '사운드'),
+                trailing: Icon(isPlaying ? Icons.pause : Icons.play_arrow),
+                onTap: () => _play(url),
+              );
+            },
+          );
+        },
       ),
     );
   }
@@ -524,63 +343,42 @@ class _SoundScreenState extends State<SoundScreen> {
 
 class JournalScreen extends StatefulWidget {
   const JournalScreen({super.key});
-
   @override
   State<JournalScreen> createState() => _JournalScreenState();
 }
 
 class _JournalScreenState extends State<JournalScreen> {
-  final TextEditingController _controller = TextEditingController();
-  List<Map<String, String>> _entries = [];
+  final _controller = TextEditingController();
+  final String _uid = FirebaseAuth.instance.currentUser?.uid ?? '';
+  bool _isSending = false;
+  bool _isPublic = false; // 공개 여부 선택 상태
 
-  @override
-  void initState() {
-    super.initState();
-    _loadEntries();
-  }
-
-  Future<void> _loadEntries() async {
-    final prefs = await SharedPreferences.getInstance();
-    final String? entriesJson = prefs.getString('journal_entries');
-    if (entriesJson != null) {
-      setState(() {
-        _entries = List<Map<String, String>>.from(
-          json.decode(entriesJson).map((item) => Map<String, String>.from(item)),
-        );
-      });
+  Future<String> _generateAIResponse(String content) async {
+    await Future.delayed(const Duration(seconds: 2));
+    if (content.contains('힘들어') || content.contains('지쳐') || content.length < 5) {
+      return "짧은 한마디 속에 담긴 오늘의 무게가 제 마음에도 깊게 전해져 옵니다. 얼마나 고단하고 벅찬 하루였을지 다 헤아릴 순 없지만, 그 힘듦을 묵묵히 견뎌낸 당신의 시간을 진심으로 안아드리고 싶어요. 오늘은 다른 걱정은 잠시 내려두고, 고생한 당신의 마음이 편안한 쉼을 얻을 수 있도록 따뜻한 숨을 고르는 밤이 되시길 바랍니다.\n\n***\n**[마음을 다독이는 시]**\n\"흔들리지 않고 피는 꽃이 어디 있으랴 이 세상 그 어떤 아름다운 꽃들도 다 흔들리면서 피었나니\" - 도종환, 〈흔들리며 피는 꽃〉 중에서";
+    } else {
+      return "오늘 하루도 정말 고생 많으셨어요. 당신의 진솔한 마음을 이곳에 남겨주셔서 고마워요. 편안한 밤 되시길 바랍니다.";
     }
   }
 
-  Future<void> _saveEntry() async {
-    if (_controller.text.trim().isEmpty) return;
-
-    final newEntry = {
-      'content': _controller.text.trim(),
-      'date': DateFormat('yyyy.MM.dd HH:mm').format(DateTime.now()),
-    };
-
-    setState(() {
-      _entries.insert(0, newEntry);
-      _controller.clear();
-    });
-
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString('journal_entries', json.encode(_entries));
+  Future<void> _add() async {
+    if (_controller.text.isEmpty || _isSending) return;
+    setState(() => _isSending = true);
     
-    if (mounted) {
-      FocusScope.of(context).unfocus();
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('기록이 저장되었습니다.')),
-      );
-    }
-  }
+    final content = _controller.text;
+    final aiReply = await _generateAIResponse(content);
 
-  Future<void> _deleteEntry(int index) async {
-    setState(() {
-      _entries.removeAt(index);
+    await FirebaseFirestore.instance.collection('journals').add({
+      'content': content,
+      'aiReply': aiReply,
+      'userId': _uid,
+      'isPublic': _isPublic, // 공개 여부 저장
+      'createdAt': FieldValue.serverTimestamp(),
     });
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString('journal_entries', json.encode(_entries));
+    
+    _controller.clear();
+    setState(() { _isSending = false; _isPublic = false; });
   }
 
   @override
@@ -588,92 +386,86 @@ class _JournalScreenState extends State<JournalScreen> {
     return SafeArea(
       child: Padding(
         padding: const EdgeInsets.all(24.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text('기록 저널', style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold)),
-            const SizedBox(height: 8),
-            const Text('오늘 하루 당신의 마음은 어땠나요?', style: TextStyle(color: Colors.grey)),
-            const SizedBox(height: 24),
-            
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.05),
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: Colors.white.withOpacity(0.1)),
-              ),
-              child: Column(
-                children: [
-                  TextField(
-                    controller: _controller,
-                    maxLines: 3,
-                    decoration: const InputDecoration(
-                      hintText: '여기에 마음을 남겨보세요...',
-                      border: InputBorder.none,
-                      hintStyle: TextStyle(color: Colors.white24),
-                    ),
-                    style: const TextStyle(color: Colors.white),
-                  ),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.end,
-                    children: [
-                      ElevatedButton(
-                        onPressed: _saveEntry,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.pinkAccent,
-                          foregroundColor: Colors.white,
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                        ),
-                        child: const Text('저장하기'),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
+        child: Column(children: [
+          TextField(
+            controller: _controller, 
+            decoration: InputDecoration(
+              hintText: '오늘의 마음을 남겨보세요...', 
+              suffixIcon: _isSending ? const Padding(padding: EdgeInsets.all(12), child: SizedBox(width: 24, height: 24, child: CircularProgressIndicator(strokeWidth: 2))) : IconButton(onPressed: _add, icon: const Icon(Icons.send))
+            )
+          ),
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 8.0),
+            child: Row(
+              children: [
+                const Text("나만 보기", style: TextStyle(fontSize: 12, color: Colors.grey)),
+                Switch(
+                  value: _isPublic, 
+                  onChanged: (v) => setState(() => _isPublic = v),
+                  activeColor: const Color(0xFFF472B6),
+                ),
+                const Text("전체 공개", style: TextStyle(fontSize: 12, color: Colors.grey)),
+              ],
             ),
-            
-            const SizedBox(height: 32),
-            const Text('이전 기록', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-            const SizedBox(height: 16),
-            
-            Expanded(
-              child: _entries.isEmpty 
-                ? const Center(child: Text('아직 남겨진 기록이 없습니다.', style: TextStyle(color: Colors.white24)))
-                : ListView.builder(
-                    itemCount: _entries.length,
-                    itemBuilder: (context, index) {
-                      final entry = _entries[index];
-                      return Container(
-                        margin: const EdgeInsets.only(bottom: 12),
-                        padding: const EdgeInsets.all(16),
-                        decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.03),
-                          borderRadius: BorderRadius.circular(16),
-                        ),
+          ),
+          const SizedBox(height: 10),
+          Expanded(
+            child: StreamBuilder<QuerySnapshot>(
+              // 내가 쓴 글이거나, 전체 공개된 글만 가져옴
+              stream: FirebaseFirestore.instance.collection('journals').orderBy('createdAt', descending: true).snapshots(),
+              builder: (context, snapshot) {
+                if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
+                
+                final docs = snapshot.data!.docs.where((doc) {
+                  final data = doc.data() as Map<String, dynamic>;
+                  final userId = data['userId'] ?? '';
+                  final isPublic = data['isPublic'] ?? false;
+                  return userId == _uid || isPublic == true;
+                }).toList();
+
+                return ListView(
+                  children: docs.map((doc) {
+                    final data = doc.data() as Map<String, dynamic>;
+                    final isMyPost = data['userId'] == _uid;
+                    return Card(
+                      margin: const EdgeInsets.only(bottom: 16),
+                      color: isMyPost ? Colors.white.withOpacity(0.08) : Colors.white.withOpacity(0.03),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16), side: isMyPost ? const BorderSide(color: Color(0xFFF472B6), width: 0.5) : BorderSide.none),
+                      child: Padding(
+                        padding: const EdgeInsets.all(16.0),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Row(
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
-                                Text(entry['date']!, style: const TextStyle(color: Colors.pinkAccent, fontSize: 12, fontWeight: FontWeight.bold)),
-                                GestureDetector(
-                                  onTap: () => _deleteEntry(index),
-                                  child: const Icon(Icons.close, size: 16, color: Colors.white24),
-                                ),
+                                Text(isMyPost ? "나의 기록" : "누군가의 마음", style: TextStyle(fontSize: 12, color: isMyPost ? const Color(0xFFF472B6) : Colors.grey, fontWeight: FontWeight.bold)),
+                                if (isMyPost) Icon(data['isPublic'] == true ? Icons.public : Icons.lock_outline, size: 14, color: Colors.grey),
                               ],
                             ),
                             const SizedBox(height: 8),
-                            Text(entry['content']!, style: const TextStyle(color: Colors.white70, height: 1.5)),
+                            Text(data['content'] ?? '', style: const TextStyle(fontSize: 16)),
+                            if (data['aiReply'] != null) ...[
+                              const Divider(height: 32, color: Colors.white10),
+                              Row(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const Icon(Icons.auto_awesome, size: 18, color: Color(0xFFF472B6)),
+                                  const SizedBox(width: 10),
+                                  Expanded(child: Text(data['aiReply'], style: const TextStyle(color: Color(0xFFE5E7EB), height: 1.6, fontSize: 14))),
+                                ],
+                              ),
+                            ],
                           ],
                         ),
-                      );
-                    },
-                  ),
+                      ),
+                    );
+                  }).toList(),
+                );
+              },
             ),
-          ],
-        ),
+          ),
+        ]),
       ),
     );
   }
