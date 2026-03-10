@@ -1,0 +1,92 @@
+Flutter crash report.
+Please report a bug at https://github.com/flutter/flutter/issues.
+
+## command
+
+flutter analyze
+
+## exception
+
+_Exception: Exception: analysis server exited with code 255 and output:
+[stderr] #17     FileSystemState.getFileForPath (package:analyzer/src/dart/analysis/file_state.dart:1376:14)
+[stderr] #18     AnalysisDriver._discoverLibraries (package:analyzer/src/dart/analysis/driver.dart:1676:16)
+[stderr] #19     AnalysisDriver.performWork (package:analyzer/src/dart/analysis/driver.dart:1163:5)
+[stderr] #20     AnalysisDriverScheduler._run (package:analyzer/src/dart/analysis/driver.dart:2611:24)
+[stderr] <asynchronous suspension>
+[stderr] 
+[stderr] 
+[stderr] #0      FileState.parse (package:analyzer/src/dart/analysis/file_state.dart:605:7)
+[stderr] #1      FileState._getUnlinkedUnit (package:analyzer/src/dart/analysis/file_state.dart:833:16)
+[stderr] #2      FileState.refresh.<anonymous closure> (package:analyzer/src/dart/analysis/file_state.dart:677:29)
+[stderr] #3      OperationPerformanceImpl.run (package:analyzer/src/util/performance/operation_performance.dart:150:23)
+[stderr] #4      FileState.refresh (package:analyzer/src/dart/analysis/file_state.dart:676:17)
+[stderr] #5      FileSystemState._newFile.<anonymous closure> (package:analyzer/src/dart/analysis/file_state.dart:1600:12)
+[stderr] #6      OperationPerformanceImpl.run (package:analyzer/src/util/performance/operation_performance.dart:150:23)
+[stderr] #7      FileSystemState._newFile (package:analyzer/src/dart/analysis/file_state.dart:1599:17)
+[stderr] #8      FileSystemState.getFileForPath (package:analyzer/src/dart/analysis/file_state.dart:1376:14)
+[stderr] #9      AnalysisDriver._discoverLibraries (package:analyzer/src/dart/analysis/driver.dart:1676:16)
+[stderr] #10     AnalysisDriver.performWork (package:analyzer/src/dart/analysis/driver.dart:1163:5)
+[stderr] #11     AnalysisDriverScheduler._run (package:analyzer/src/dart/analysis/driver.dart:2611:24)
+[stderr] <asynchronous suspension>
+
+```
+```
+
+## flutter doctor
+
+```
+[32m[✓][39m Flutter (Channel stable, 3.35.7, on macOS 26.4 25E5233c darwin-arm64, locale ko-KR)
+    [301ms]
+    [32m•[39m Flutter version 3.35.7 on channel stable at /Users/kim-yoonki/Applications/flutter
+    [32m•[39m Upstream repository https://github.com/flutter/flutter.git
+    [32m•[39m Framework revision adc9010625 (5 months ago), 2025-10-21 14:16:03 -0400
+    [32m•[39m Engine revision 035316565a
+    [32m•[39m Dart version 3.9.2
+    [32m•[39m DevTools version 2.48.0
+    [32m•[39m Feature flags: enable-web, enable-linux-desktop, enable-macos-desktop,
+      enable-windows-desktop, enable-android, enable-ios, cli-animations,
+      enable-lldb-debugging
+
+[31m[✗][39m Android toolchain - develop for Android devices [226ms]
+    [31m✗[39m Unable to locate Android SDK.
+      Install Android Studio from: https://developer.android.com/studio/index.html
+      On first launch it will assist you in installing the Android SDK components.
+      (or visit https://flutter.dev/to/macos-android-setup for detailed instructions).
+      If the Android SDK has been installed to a custom location, please use
+      `flutter config --android-sdk` to update to that location.
+
+
+[32m[✓][39m Xcode - develop for iOS and macOS (Xcode 26.3) [2.1s]
+    [32m•[39m Xcode at /Applications/Xcode.app/Contents/Developer
+    [32m•[39m Build 17C529
+    [32m•[39m CocoaPods version 1.16.2
+
+[31m[✗][39m Chrome - develop for the web (Cannot find Chrome executable at /Applications/Google
+    Chrome.app/Contents/MacOS/Google Chrome) [8ms]
+    [33m![39m Cannot find Chrome. Try setting CHROME_EXECUTABLE to a Chrome executable.
+
+[33m[!][39m Android Studio (not installed) [8ms]
+    [32m•[39m Android Studio not found; download from
+      https://developer.android.com/studio/index.html
+      (or visit https://flutter.dev/to/macos-android-setup for detailed instructions).
+
+[32m[✓][39m VS Code (version 1.107.1) [7ms]
+    [32m•[39m VS Code at /Applications/Visual Studio Code.app/Contents
+    [32m•[39m Flutter extension can be installed from:
+      🔨 https://marketplace.visualstudio.com/items?itemName=Dart-Code.flutter
+
+[32m[✓][39m Connected device (2 available) [7.8s]
+    [32m•[39m iPhone 17 Pro (mobile) • EA2DD57E-DD9C-440E-8929-8E9DA4353E57 • ios          •
+      com.apple.CoreSimulator.SimRuntime.iOS-26-0 (simulator)
+    [32m•[39m macOS (desktop)        • macos                                • darwin-arm64 •
+      macOS 26.4 25E5233c darwin-arm64
+    [33m![39m Error: Browsing on the local area network for 김윤기의 iPhone. Ensure the device is
+      unlocked and attached with a cable or associated with the same local area network
+      as this Mac.
+      The device must be opted into Developer Mode to connect wirelessly. (code -27)
+
+[32m[✓][39m Network resources [931ms]
+    [32m•[39m All expected network resources are available.
+
+[33m![39m Doctor found issues in 3 categories.
+```

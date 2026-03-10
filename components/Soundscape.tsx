@@ -79,26 +79,38 @@ const Soundscape: React.FC = () => {
       </div>
 
       <div className="grid grid-cols-1 gap-4">
-        {sounds.map((sound) => (
-          <button
-            key={sound.id}
-            onClick={() => toggleSound(sound)}
-            className={`glass-card p-4 rounded-3xl flex items-center justify-between transition-all active:scale-[0.98] ${playingId === sound.id ? 'border-pink-500/50 bg-pink-500/10' : 'border-white/5'}`}
-          >
-            <div className="flex items-center gap-4">
-              <div className={`w-12 h-12 rounded-2xl flex items-center justify-center ${sound.color} text-white shrink-0`}>
-                {getIcon(sound.iconName)}
+        {sounds.map((sound) => {
+          const isPlaying = playingId === sound.id;
+          const isHex = sound.color?.startsWith('#') || sound.color?.startsWith('rgb');
+          
+          return (
+            <button
+              key={sound.id}
+              onClick={() => toggleSound(sound)}
+              className={`glass-card p-4 rounded-3xl flex items-center justify-between transition-all active:scale-[0.98] ${isPlaying ? 'border-pink-500/50 bg-pink-500/10' : 'border-white/5'}`}
+              style={isPlaying && isHex ? { borderColor: `${sound.color}80`, backgroundColor: `${sound.color}1A` } : {}}
+            >
+              <div className="flex items-center gap-4">
+                <div 
+                  className={`w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 ${!isHex ? sound.color : ''} text-white`}
+                  style={isHex ? { backgroundColor: sound.color } : {}}
+                >
+                  {getIcon(sound.iconName)}
+                </div>
+                <div className="text-left min-w-0">
+                  <h3 className="font-bold text-base truncate">{sound.name}</h3>
+                  <p className="text-[10px] text-gray-500 uppercase tracking-widest mt-1 truncate">Ambient Soundscape</p>
+                </div>
               </div>
-              <div className="text-left min-w-0">
-                <h3 className="font-bold text-base truncate">{sound.name}</h3>
-                <p className="text-[10px] text-gray-500 uppercase tracking-widest mt-1 truncate">Ambient Soundscape</p>
+              <div 
+                className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${isPlaying ? (!isHex ? 'bg-pink-500 text-white' : 'text-white') : 'bg-white/5 text-gray-400'}`}
+                style={isPlaying && isHex ? { backgroundColor: sound.color } : {}}
+              >
+                {isPlaying ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4 ml-0.5" />}
               </div>
-            </div>
-            <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${playingId === sound.id ? 'bg-pink-500 text-white' : 'bg-white/5 text-gray-400'}`}>
-              {playingId === sound.id ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4 ml-0.5" />}
-            </div>
-          </button>
-        ))}
+            </button>
+          );
+        })}
       </div>
 
       <VolumeSlider 
