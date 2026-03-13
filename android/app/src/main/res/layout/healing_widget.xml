@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@android:color/transparent"
+    android:padding="8dp">
+
+    <!-- 위젯 배경: 둥근 모서리 검정 배경 -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:orientation="vertical"
+        android:padding="16dp"
+        android:background="#E60A0502"> <!-- 약 90% 투명도 검정 -->
+
+        <!-- 핑크색 포인트 아이콘 (심플하게 텍스트로 대체) -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="♥"
+            android:textColor="#F472B6"
+            android:textSize="18sp"
+            android:layout_marginBottom="8dp"/>
+
+        <!-- 명언 텍스트 -->
+        <TextView
+            android:id="@+id/appwidget_text"
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1"
+            android:text="당신은 생각보다 훨씬 더 강한 사람입니다."
+            android:textColor="#FFFFFF"
+            android:textSize="16sp"
+            android:textStyle="bold"
+            android:gravity="center_vertical"
+            android:lineSpacingExtra="4dp"/>
+
+        <!-- 저자/출처 -->
+        <TextView
+            android:id="@+id/appwidget_author"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="- 힐링 모먼트"
+            android:textColor="#88FFFFFF"
+            android:textSize="11sp"
+            android:gravity="end"
+            android:layout_marginTop="4dp"/>
+
+    </LinearLayout>
+</RelativeLayout>
