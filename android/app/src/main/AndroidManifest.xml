@@ -5,7 +5,7 @@
     <application
         android:label="healing_moments"
         android:name="${applicationName}"
-        android:icon="@mipmap/ic_launcher">
+        android:icon="@mipmap/launcher_icon">
         <activity
             android:name="com.example.healing_moments.MainActivity"
             android:exported="true"
